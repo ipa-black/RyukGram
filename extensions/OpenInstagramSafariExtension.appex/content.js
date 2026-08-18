@@ -1,9 +1,11 @@
 // Redirect instagram.com web links into the native app.
-// Shipped inside RyukGram as a Safari web extension.
+// Shipped inside HorusGram as a Safari web extension.
 
 (function () {
     if (window.top !== window.self) return;
-    if (sessionStorage.getItem("__rygOpenedApp")) return;
+    
+    // تم تغيير المتغير القديم ليحمل بصمة حورس كرام
+    if (sessionStorage.getItem("__horusOpenedApp")) return;
 
     function urlFromLocation() {
         const path = window.location.pathname.split("/").filter(Boolean);
@@ -33,7 +35,9 @@
     function openInApp() {
         const target = urlFromLocation();
         if (!target) return;
-        sessionStorage.setItem("__rygOpenedApp", "1");
+        
+        // تسجيل الجلسة باسم حورس كرام
+        sessionStorage.setItem("__horusOpenedApp", "1");
         window.location.href = target;
     }
 
