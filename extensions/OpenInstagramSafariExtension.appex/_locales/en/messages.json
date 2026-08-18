@@ -1,10 +1,10 @@
 {
     "extension_name": {
-        "message": "Open in Instagram",
+        "message": "حورَس كرام",
         "description": "The display name for the extension."
     },
     "extension_description": {
-        "message": "Opens instagram.com links (profiles, posts, reels, stories, tags) in the Instagram app.",
+        "message": "إضافة حورَس كرام لفتح روابط إنستغرام (الحسابات، المنشورات، الريلز، القصص) في التطبيق مباشرة.",
         "description": "Description of what the extension does."
     }
 }
