@@ -48,7 +48,7 @@ exp_flags/
 
 # Source packaging
 zip-src.sh
-RyukGram-src-*.zip
-RYG*.md
+HorusGram-src-*.zip
+Horus*.md
 *.zip
 *_diff.txt
