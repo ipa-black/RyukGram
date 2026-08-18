@@ -1,4 +1,4 @@
-name: Build sideloaded IPA from Release Assets
+Name: Build sideloaded IPA from Release Assets
 
 on:
     workflow_dispatch:
@@ -52,11 +52,11 @@ concurrency:
     cancel-in-progress: true
 
 env:
-    UPSTREAM_REPO: faroukbmiled/RyukGram
+    UPSTREAM_REPO: ipa_black/HorusGram
 
 jobs:
     build:
-        name: Build RyukGram from Release
+        name: Build HorusGram from Release
         runs-on: macos-latest
         permissions:
             contents: read
@@ -105,7 +105,7 @@ jobs:
                 fi
                 [ -n "$TAG" ] || { echo "::error::Could not resolve release tag."; exit 1; }
                 VERSION="${TAG#v}"
-                # 410 builds pull the RyukGram-410 deb and tag their output -410.
+                # 410 builds pull the HorusGram-410 deb and tag their output -410.
                 SUF=""; [ "$INPUT_TARGET" = "410" ] && SUF="-410"
                 echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
                 echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
@@ -122,9 +122,8 @@ jobs:
                 set -euo pipefail
                 mkdir -p packages release-assets
 
-                # 410 tweak lives in the RyukGram-410 deb; main in RyukGram_. The
-                # plugin dylibs are shared, so both targets pull the same ones.
-                if [ "$TARGET" = "410" ]; then DEBP="RyukGram-410_*_rootless.deb"; else DEBP="RyukGram_*_rootless.deb"; fi
+                # 410 tweak lives in the HorusGram-410 deb; main in HorusGram_.
+                if [ "$TARGET" = "410" ]; then DEBP="HorusGram-410_*_rootless.deb"; else DEBP="HorusGram_*_rootless.deb"; fi
                 gh release download "$TAG" --repo "$UPSTREAM_REPO" --dir release-assets --pattern "$DEBP"
                 DEB="$(ls -t release-assets/$DEBP 2>/dev/null | head -n1 || true)"
                 [ -n "$DEB" ] || { echo "::error::Rootless .deb ($DEBP) not found in release $TAG."; exit 1; }
@@ -137,7 +136,7 @@ jobs:
                   gh release download "$TAG" --repo "$UPSTREAM_REPO" --dir release-assets \
                     --pattern "zxPluginsInject_v*.dylib"
                   ZX_DYLIB="$(ls -t release-assets/zxPluginsInject_v*.dylib 2>/dev/null | head -n1 || true)"
-                  [ -n "$ZX_DYLIB" ] || { echo "::error::zxPluginsInject dylib not found in release $TAG (enable include_zxinject when releasing)."; exit 1; }
+                  [ -n "$ZX_DYLIB" ] || { echo "::error::zxPluginsInject dylib not found in release $TAG."; exit 1; }
                   echo "ZX_DYLIB=${ZX_DYLIB}" >> "$GITHUB_ENV"
                 fi
 
@@ -145,7 +144,7 @@ jobs:
                   gh release download "$TAG" --repo "$UPSTREAM_REPO" --dir release-assets \
                     --pattern "NoPluginsPatch_v*.dylib"
                   NP_DYLIB="$(ls -t release-assets/NoPluginsPatch_v*.dylib 2>/dev/null | head -n1 || true)"
-                  [ -n "$NP_DYLIB" ] || { echo "::error::NoPluginsPatch dylib not found in release $TAG (enable include_noplugins_patch when releasing)."; exit 1; }
+                  [ -n "$NP_DYLIB" ] || { echo "::error::NoPluginsPatch dylib not found in release $TAG."; exit 1; }
                   echo "NP_DYLIB=${NP_DYLIB}" >> "$GITHUB_ENV"
                 fi
 
@@ -157,17 +156,16 @@ jobs:
                 STAGE="$(mktemp -d)"
                 dpkg-deb -x "$DEB" "$STAGE"
 
-                DYLIB_SRC="$(find "$STAGE" -type f -name 'RyukGram.dylib' | head -1)"
-                BUNDLE_SRC="$(find "$STAGE" -type d -name 'RyukGram.bundle' | head -1)"
-                [ -n "$DYLIB_SRC" ] || { echo "::error::RyukGram.dylib not found in deb."; exit 1; }
-                [ -n "$BUNDLE_SRC" ] || { echo "::error::RyukGram.bundle not found in deb."; exit 1; }
+                DYLIB_SRC="$(find "$STAGE" -type f -name 'HorusGram.dylib' | head -1)"
+                BUNDLE_SRC="$(find "$STAGE" -type d -name 'HorusGram.bundle' | head -1)"
+                [ -n "$DYLIB_SRC" ] || { echo "::error::HorusGram.dylib not found in deb."; exit 1; }
+                [ -n "$BUNDLE_SRC" ] || { echo "::error::HorusGram.bundle not found in deb."; exit 1; }
 
-                cp "$DYLIB_SRC" packages/RyukGram.dylib
-                rm -rf packages/RyukGram.bundle
-                cp -R "$BUNDLE_SRC" packages/RyukGram.bundle
+                cp "$DYLIB_SRC" packages/HorusGram.dylib
+                rm -rf packages/HorusGram.bundle
+                cp -R "$BUNDLE_SRC" packages/HorusGram.bundle
 
                 if [ "${{ inputs.build_sideload }}" = "true" ]; then
-                  # Match the @rpath LC that ipapatch writes into target binaries.
                   cp "$ZX_DYLIB" packages/zxPluginsInject.dylib
                   install_name_tool -id "@rpath/zxPluginsInject.dylib" packages/zxPluginsInject.dylib 2>/dev/null || true
                 fi
@@ -178,7 +176,7 @@ jobs:
 
                 rm -rf "$STAGE"
                 ls -la packages
-                ls -la packages/RyukGram.bundle | head -20
+                ls -la packages/HorusGram.bundle | head -20
 
             - name: Prepare Instagram IPA
               env:
@@ -194,41 +192,39 @@ jobs:
                 DUP_NAME: ${{ inputs.dup_name }}
               run: |
                 set -euo pipefail
-                rm -f packages/RyukGram-sideloaded.ipa
+                rm -f packages/HorusGram-sideloaded.ipa
                 NAME_ARGS=()
                 [ -n "$DUP_NAME" ] && NAME_ARGS=(-n "$DUP_NAME")
                 cyan \
                   -i packages/com.burbn.instagram.ipa \
-                  -o packages/RyukGram-sideloaded.ipa \
-                  -f packages/RyukGram.dylib packages/RyukGram.bundle \
+                  -o packages/HorusGram-sideloaded.ipa \
+                  -f packages/HorusGram.dylib packages/HorusGram.bundle \
                   -c 9 -m 15.0 -du \
                   ${NAME_ARGS[@]+"${NAME_ARGS[@]}"}
 
-                # Embed Safari "Open in Instagram" extension before ipapatch
-                # re-signs, so instagram.com links open the app.
                 APPEX_SRC="extensions/OpenInstagramSafariExtension.appex"
                 if [ -d "$APPEX_SRC" ]; then
                   echo "Embedding Safari extension"
                   INJECT_TMP="$(mktemp -d)"
-                  unzip -q packages/RyukGram-sideloaded.ipa -d "$INJECT_TMP"
+                  unzip -q packages/HorusGram-sideloaded.ipa -d "$INJECT_TMP"
                   APP_DIR="$(find "$INJECT_TMP/Payload" -maxdepth 1 -type d -name '*.app' | head -1)"
                   if [ -n "$APP_DIR" ]; then
                     mkdir -p "$APP_DIR/PlugIns"
                     rm -rf "$APP_DIR/PlugIns/OpenInstagramSafariExtension.appex"
                     cp -R "$APPEX_SRC" "$APP_DIR/PlugIns/"
                     ( cd "$INJECT_TMP" && zip -qr -9 ../repacked.ipa Payload )
-                    mv "$INJECT_TMP/../repacked.ipa" packages/RyukGram-sideloaded.ipa
+                    mv "$INJECT_TMP/../repacked.ipa" packages/HorusGram-sideloaded.ipa
                   fi
                   rm -rf "$INJECT_TMP"
                 fi
 
                 echo "Running ipapatch (zxPluginsInject LC injection)"
                 ipapatch \
-                  --input packages/RyukGram-sideloaded.ipa \
+                  --input packages/HorusGram-sideloaded.ipa \
                   --inplace --noconfirm \
                   --dylib packages/zxPluginsInject.dylib
 
-                mv packages/RyukGram-sideloaded.ipa "packages/RyukGram_sideload_v${VERSION}_IG${IG_VER}.ipa"
+                mv packages/HorusGram-sideloaded.ipa "packages/HorusGram_sideload_v${VERSION}_IG${IG_VER}.ipa"
                 ls -la packages
 
             - name: Build no-plugins IPA (cyan + NoPluginsPatch, appex stripped)
@@ -238,45 +234,44 @@ jobs:
                 DUP_NAME: ${{ inputs.dup_name }}
               run: |
                 set -euo pipefail
-                rm -f packages/RyukGram-noplugins.ipa
+                rm -f packages/HorusGram-noplugins.ipa
                 DUP_ARGS=()
                 [ -n "$DUP_ID" ] && DUP_ARGS+=(-b "$DUP_ID")
                 [ -n "$DUP_NAME" ] && DUP_ARGS+=(-n "$DUP_NAME")
                 cyan \
                   -i packages/com.burbn.instagram.ipa \
-                  -o packages/RyukGram-noplugins.ipa \
-                  -f packages/RyukGram.dylib packages/NoPluginsPatch.dylib packages/RyukGram.bundle \
+                  -o packages/HorusGram-noplugins.ipa \
+                  -f packages/HorusGram.dylib packages/NoPluginsPatch.dylib packages/HorusGram.bundle \
                   -c 9 -m 15.0 -du \
                   ${DUP_ARGS[@]+"${DUP_ARGS[@]}"}
 
-                # No-plugins: strip every app extension (no ipapatch, no Safari ext).
                 INJECT_TMP="$(mktemp -d)"
-                unzip -q packages/RyukGram-noplugins.ipa -d "$INJECT_TMP"
+                unzip -q packages/HorusGram-noplugins.ipa -d "$INJECT_TMP"
                 APP_DIR="$(find "$INJECT_TMP/Payload" -maxdepth 1 -type d -name '*.app' | head -1)"
                 if [ -n "$APP_DIR" ]; then
                   find "$APP_DIR" -type d -name '*.appex' -prune -exec rm -rf {} +
                   ( cd "$INJECT_TMP" && zip -qr -9 ../repacked.ipa Payload )
-                  mv "$INJECT_TMP/../repacked.ipa" packages/RyukGram-noplugins.ipa
+                  mv "$INJECT_TMP/../repacked.ipa" packages/HorusGram-noplugins.ipa
                 fi
                 rm -rf "$INJECT_TMP"
 
-                OUT="RyukGram_noplugins_v${VERSION}_IG${IG_VER}.ipa"
-                [ -n "$DUP_ID" ] && OUT="RyukGram_noplugins_v${VERSION}_IG${IG_VER}-dup.ipa"
-                mv packages/RyukGram-noplugins.ipa "packages/${OUT}"
+                OUT="HorusGram_noplugins_v${VERSION}_IG${IG_VER}.ipa"
+                [ -n "$DUP_ID" ] && OUT="HorusGram_noplugins_v${VERSION}_IG${IG_VER}-dup.ipa"
+                mv packages/HorusGram-noplugins.ipa "packages/${OUT}"
                 ls -la packages
 
             - name: Upload sideload IPA artifact
               if: ${{ inputs.upload_artifact && inputs.build_sideload }}
               uses: actions/upload-artifact@v4
               with:
-                name: RyukGram_sideload_v${{ steps.tag.outputs.version }}
-                path: packages/RyukGram_sideload_v*.ipa
+                name: HorusGram_sideload_v${{ steps.tag.outputs.version }}
+                path: packages/HorusGram_sideload_v*.ipa
                 if-no-files-found: error
 
             - name: Upload no-plugins IPA artifact
               if: ${{ inputs.upload_artifact && inputs.build_noplugins }}
               uses: actions/upload-artifact@v4
               with:
-                name: RyukGram_noplugins_v${{ steps.tag.outputs.version }}
-                path: packages/RyukGram_noplugins*.ipa
+                name: HorusGram_noplugins_v${{ steps.tag.outputs.version }}
+                path: packages/HorusGram_noplugins*.ipa
                 if-no-files-found: error
