@@ -1,4 +1,4 @@
-Name: Build sideloaded IPA from Release Assets
+name: Build sideloaded IPA from Release Assets
 
 on:
     workflow_dispatch:
