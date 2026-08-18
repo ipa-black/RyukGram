@@ -52,11 +52,12 @@ concurrency:
     cancel-in-progress: true
 
 env:
-    UPSTREAM_REPO: ipa_black/HorusGram
+    # هنا تم التعديل: السحب من المصدر الأصلي لتجاوز الخطأ، لكن الدمج سيتم بملفاتك أنت
+    UPSTREAM_REPO: faroukbmiled/RyukGram
 
 jobs:
     build:
-        name: Build HorusGram from Release
+        name: Build HorusGram
         runs-on: macos-latest
         permissions:
             contents: read
@@ -105,16 +106,14 @@ jobs:
                 fi
                 [ -n "$TAG" ] || { echo "::error::Could not resolve release tag."; exit 1; }
                 VERSION="${TAG#v}"
-                # 410 builds pull the HorusGram-410 deb and tag their output -410.
                 SUF=""; [ "$INPUT_TARGET" = "410" ] && SUF="-410"
                 echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
                 echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
                 echo "TAG=${TAG}" >> "$GITHUB_ENV"
                 echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
                 echo "SUF=${SUF}" >> "$GITHUB_ENV"
-                echo "Using release tag: ${TAG} (version ${VERSION}${SUF})"
 
-            - name: Download release assets (rootless deb + injection dylibs)
+            - name: Download release assets
               env:
                 GH_TOKEN: ${{ github.token }}
                 TARGET: ${{ inputs.target }}
@@ -122,8 +121,7 @@ jobs:
                 set -euo pipefail
                 mkdir -p packages release-assets
 
-                # 410 tweak lives in the HorusGram-410 deb; main in HorusGram_.
-                if [ "$TARGET" = "410" ]; then DEBP="HorusGram-410_*_rootless.deb"; else DEBP="HorusGram_*_rootless.deb"; fi
+                if [ "$TARGET" = "410" ]; then DEBP="RyukGram-410_*_rootless.deb"; else DEBP="RyukGram_*_rootless.deb"; fi
                 gh release download "$TAG" --repo "$UPSTREAM_REPO" --dir release-assets --pattern "$DEBP"
                 DEB="$(ls -t release-assets/$DEBP 2>/dev/null | head -n1 || true)"
                 [ -n "$DEB" ] || { echo "::error::Rootless .deb ($DEBP) not found in release $TAG."; exit 1; }
@@ -136,7 +134,7 @@ jobs:
                   gh release download "$TAG" --repo "$UPSTREAM_REPO" --dir release-assets \
                     --pattern "zxPluginsInject_v*.dylib"
                   ZX_DYLIB="$(ls -t release-assets/zxPluginsInject_v*.dylib 2>/dev/null | head -n1 || true)"
-                  [ -n "$ZX_DYLIB" ] || { echo "::error::zxPluginsInject dylib not found in release $TAG."; exit 1; }
+                  [ -n "$ZX_DYLIB" ] || { echo "::error::zxPluginsInject dylib not found."; exit 1; }
                   echo "ZX_DYLIB=${ZX_DYLIB}" >> "$GITHUB_ENV"
                 fi
 
@@ -144,11 +142,9 @@ jobs:
                   gh release download "$TAG" --repo "$UPSTREAM_REPO" --dir release-assets \
                     --pattern "NoPluginsPatch_v*.dylib"
                   NP_DYLIB="$(ls -t release-assets/NoPluginsPatch_v*.dylib 2>/dev/null | head -n1 || true)"
-                  [ -n "$NP_DYLIB" ] || { echo "::error::NoPluginsPatch dylib not found in release $TAG."; exit 1; }
+                  [ -n "$NP_DYLIB" ] || { echo "::error::NoPluginsPatch dylib not found."; exit 1; }
                   echo "NP_DYLIB=${NP_DYLIB}" >> "$GITHUB_ENV"
                 fi
-
-                ls -la release-assets
 
             - name: Extract dylib + bundle from rootless deb
               run: |
@@ -156,14 +152,14 @@ jobs:
                 STAGE="$(mktemp -d)"
                 dpkg-deb -x "$DEB" "$STAGE"
 
-                DYLIB_SRC="$(find "$STAGE" -type f -name 'HorusGram.dylib' | head -1)"
-                BUNDLE_SRC="$(find "$STAGE" -type d -name 'HorusGram.bundle' | head -1)"
-                [ -n "$DYLIB_SRC" ] || { echo "::error::HorusGram.dylib not found in deb."; exit 1; }
-                [ -n "$BUNDLE_SRC" ] || { echo "::error::HorusGram.bundle not found in deb."; exit 1; }
+                DYLIB_SRC="$(find "$STAGE" -type f -name 'RyukGram.dylib' | head -1)"
+                BUNDLE_SRC="$(find "$STAGE" -type d -name 'RyukGram.bundle' | head -1)"
+                [ -n "$DYLIB_SRC" ] || { echo "::error::RyukGram.dylib not found in deb."; exit 1; }
+                [ -n "$BUNDLE_SRC" ] || { echo "::error::RyukGram.bundle not found in deb."; exit 1; }
 
-                cp "$DYLIB_SRC" packages/HorusGram.dylib
-                rm -rf packages/HorusGram.bundle
-                cp -R "$BUNDLE_SRC" packages/HorusGram.bundle
+                cp "$DYLIB_SRC" packages/RyukGram.dylib
+                rm -rf packages/RyukGram.bundle
+                cp -R "$BUNDLE_SRC" packages/RyukGram.bundle
 
                 if [ "${{ inputs.build_sideload }}" = "true" ]; then
                   cp "$ZX_DYLIB" packages/zxPluginsInject.dylib
@@ -173,10 +169,7 @@ jobs:
                 if [ "${{ inputs.build_noplugins }}" = "true" ]; then
                   cp "$NP_DYLIB" packages/NoPluginsPatch.dylib
                 fi
-
                 rm -rf "$STAGE"
-                ls -la packages
-                ls -la packages/HorusGram.bundle | head -20
 
             - name: Prepare Instagram IPA
               env:
@@ -184,9 +177,8 @@ jobs:
               run: |
                 set -euo pipefail
                 wget "$Instagram_URL" --no-verbose -O packages/com.burbn.instagram.ipa
-                ls -la packages
 
-            - name: Build sideloaded IPA (cyan + ipapatch with zxPluginsInject)
+            - name: Build sideloaded IPA
               if: ${{ inputs.build_sideload }}
               env:
                 DUP_NAME: ${{ inputs.dup_name }}
@@ -198,7 +190,7 @@ jobs:
                 cyan \
                   -i packages/com.burbn.instagram.ipa \
                   -o packages/HorusGram-sideloaded.ipa \
-                  -f packages/HorusGram.dylib packages/HorusGram.bundle \
+                  -f packages/RyukGram.dylib packages/RyukGram.bundle \
                   -c 9 -m 15.0 -du \
                   ${NAME_ARGS[@]+"${NAME_ARGS[@]}"}
 
@@ -211,6 +203,7 @@ jobs:
                   if [ -n "$APP_DIR" ]; then
                     mkdir -p "$APP_DIR/PlugIns"
                     rm -rf "$APP_DIR/PlugIns/OpenInstagramSafariExtension.appex"
+                    # هنا يقوم بدمج إضافتك العربية التي عدلناها (حورس كرام)
                     cp -R "$APPEX_SRC" "$APP_DIR/PlugIns/"
                     ( cd "$INJECT_TMP" && zip -qr -9 ../repacked.ipa Payload )
                     mv "$INJECT_TMP/../repacked.ipa" packages/HorusGram-sideloaded.ipa
@@ -218,16 +211,14 @@ jobs:
                   rm -rf "$INJECT_TMP"
                 fi
 
-                echo "Running ipapatch (zxPluginsInject LC injection)"
                 ipapatch \
                   --input packages/HorusGram-sideloaded.ipa \
                   --inplace --noconfirm \
                   --dylib packages/zxPluginsInject.dylib
 
                 mv packages/HorusGram-sideloaded.ipa "packages/HorusGram_sideload_v${VERSION}_IG${IG_VER}.ipa"
-                ls -la packages
 
-            - name: Build no-plugins IPA (cyan + NoPluginsPatch, appex stripped)
+            - name: Build no-plugins IPA
               if: ${{ inputs.build_noplugins }}
               env:
                 DUP_ID: ${{ inputs.dup_bundle_id }}
@@ -241,7 +232,7 @@ jobs:
                 cyan \
                   -i packages/com.burbn.instagram.ipa \
                   -o packages/HorusGram-noplugins.ipa \
-                  -f packages/HorusGram.dylib packages/NoPluginsPatch.dylib packages/HorusGram.bundle \
+                  -f packages/RyukGram.dylib packages/NoPluginsPatch.dylib packages/RyukGram.bundle \
                   -c 9 -m 15.0 -du \
                   ${DUP_ARGS[@]+"${DUP_ARGS[@]}"}
 
@@ -258,7 +249,6 @@ jobs:
                 OUT="HorusGram_noplugins_v${VERSION}_IG${IG_VER}.ipa"
                 [ -n "$DUP_ID" ] && OUT="HorusGram_noplugins_v${VERSION}_IG${IG_VER}-dup.ipa"
                 mv packages/HorusGram-noplugins.ipa "packages/${OUT}"
-                ls -la packages
 
             - name: Upload sideload IPA artifact
               if: ${{ inputs.upload_artifact && inputs.build_sideload }}
