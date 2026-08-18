@@ -1,22 +1,29 @@
+/* إعدادات الألوان لتدعم الوضعين الليلي والنهاري تلقائياً */
 :root {
     color-scheme: light dark;
 }
 
+/* الإعدادات الأساسية للنافذة (جسم الإضافة) */
 body {
-    width: 220px;
-    padding: 14px 16px;
+    width: 220px; /* عرض النافذة */
+    padding: 14px 16px; /* الهوامش الداخلية */
     margin: 0;
-    font-family: -apple-system, system-ui, sans-serif;
-    text-align: left;
+    font-family: -apple-system, system-ui, sans-serif; /* خطوط نظام أبل الرسمية */
+    
+    /* التعديلات الجديدة لدعم اللغة العربية */
+    direction: rtl; /* جعل اتجاه الواجهة من اليمين لليسار */
+    text-align: right; /* محاذاة النصوص لليمين */
 }
 
+/* تنسيق العنوان الأساسي (مثل اسم حورَس كرام) */
 .title {
     font-size: 15px;
     font-weight: 600;
 }
 
+/* تنسيق الوصف الفرعي (النص الأصغر تحته) */
 .subtitle {
     margin-top: 4px;
     font-size: 12px;
-    opacity: 0.7;
+    opacity: 0.7; /* درجة الشفافية */
 }
